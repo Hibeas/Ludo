@@ -9,6 +9,9 @@ class Pawn:
         self.pawn_id = pawn_id  
         self.position = 0       # 0 = Yard, 1-40 = Board, 99 = Home
         self.is_home = False
+        self.board_index = 0
+        self.move_timer = 0
+        self.move_speed = 30
         
         self.screen_pos = start_pos_xy
         
@@ -25,6 +28,14 @@ class Pawn:
         
     def draw(self, surface):
         surface.blit(self.image, self.rect)
+        
+    def auto_walk(self, board_list):
+        if self.board_index < len(board_list):
+            self.move_timer += 1
+            if self.move_timer >= self.move_speed:
+                self.rect.center = board_list[self.board_index]
+                self.board_index += 1
+                self.move_timer = 0 # Reset timer
 
 
 
