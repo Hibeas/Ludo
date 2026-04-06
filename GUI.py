@@ -24,7 +24,7 @@ blue_pawns = [Pawn("blue", i, constants.BLUE_START[i-1]) for i in range(5)]
 all_pawns = green_pawns + blue_pawns
 rolled_value = 0
 current_turn = "blue"
-
+waiting_for_move = False
 
 while game_status:
 	events = pygame.event.get()
@@ -32,7 +32,7 @@ while game_status:
 		if event.type == pygame.QUIT:
 			game_status = False
 		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_SPACE:
+			if event.key == pygame.K_SPACE and not waiting_for_move:
 				if not my_dice.is_rolling: 
 					my_dice.start_roll()
 			if event.key == pygame.K_1:
@@ -41,12 +41,29 @@ while game_status:
 			if event.key == pygame.K_6:
 				my_dice.new_value = True	
 				my_dice.current_value   = 6
+    
+    
+		if event.type == pygame.MOUSEBUTTONDOWN and waiting_for_move:
+			mouse_pos = event.pos
+			
+			active_pawns = blue_pawns if current_turn == "blue" else green_pawns
+			
+			for pawn in active_pawns:
+				if pawn.rect.collidepoint(mouse_pos):
+					pawn.move(steps)
+					print(f"{current_turn} moved pawn {pawn.pawn_id}")
+					
+					current_turn = "green" if current_turn == "blue" else "blue"
+					rolled_value = 0
+					waiting_for_move = False
+					break
 	
 	dice_score = my_dice.update() 
 	if not my_dice.is_rolling and my_dice.current_value > 0 and my_dice.new_value: 
 		steps = my_dice.current_value
-		my_dice.new_value = False	
-		blue_pawns[1].move(steps)
+		my_dice.new_value = False
+		waiting_for_move = True	
+		print(f"Waiting for {current_turn} to click a pawn. Rolled: {my_dice.current_value}")
 
 	screen_surface.blit(board_image, (0, 0))
 
