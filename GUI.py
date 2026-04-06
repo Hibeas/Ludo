@@ -3,21 +3,57 @@ from game_logic import Pawn, Dice
 import constants
 
 
-#okay we need to now whos turn it is if its on one pc it will jsut change the turn after the player rolls the dice and moves but if its on two pcs we need to send the 
-# data to the other pc and then change the turn there as well. we will sent it using dictionariues and json 
-
-
-#what need to be done - selection which pawn to move, changing tourns, if the pawn get to the home count how many stpes it can take to not go over the board
 # Pygame setup
 pygame.init()
 pygame.display.set_caption('Ludo Game')
 clock = pygame.time.Clock()
 game_status = True
+pygame.font.init()
+
+main_font = pygame.font.SysFont("Arial", 24)
+title_font = pygame.font.SysFont("Arial", 32, bold=True)
+
+def draw_info_panel(surface, turn, dice_val, waiting):
+    sidebar_rect = pygame.Rect(800, 0, constants.SIDEBAR_WIDTH, 800)
+    pygame.draw.rect(surface, (40, 40, 40), sidebar_rect)
+    pygame.draw.line(surface, (200, 200, 200), (800, 0), (800, 800), 3) 
+
+    color_map = {"blue": (100, 100, 255), "green": (100, 255, 100)}
+    turn_text = title_font.render(f"TURN: {turn.upper()}", True, color_map[turn])
+    surface.blit(turn_text, (820, 50))
+
+    if not waiting:
+        status = "Press SPACE to Roll"
+    else:
+        status = f"Rolled: {dice_val}! Click a pawn."
+    
+    instr_text = main_font.render(status, True, (255, 255, 255))
+    surface.blit(instr_text, (820, 120))
+
+    controls = [
+        "How to play:",
+        "- Roll a 6 to start",
+        "- Click pawn to move",
+        "",
+        "Debug keys:",
+        "1 or 6: Force roll"
+    ]
+    
+    for i, line in enumerate(controls):
+        line_text = main_font.render(line, True, (180, 180, 180))
+        surface.blit(line_text, (820, 250 + (i * 35)))
+
+#okay we need to now whos turn it is if its on one pc it will jsut change the turn after the player rolls the dice and moves but if its on two pcs we need to send the 
+# data to the other pc and then change the turn there as well. we will sent it using dictionariues and json 
+
+
+#what need to be done - make sure that pawn can be moved and add some info how to play the game - like isntruction on the left with whose turn it is
+
 
 # Game assets and objects
 screen_surface = pygame.display.set_mode((constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
 board_image = pygame.image.load("assets/board.png").convert()
-board_image = pygame.transform.scale(board_image, (constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT))
+board_image = pygame.transform.scale(board_image, (constants.GAME_WIDTH, constants.SCREEN_HEIGHT))
 my_dice = Dice((400, 400))
 green_pawns = [Pawn("green", i, constants.GREEN_START[i-1]) for i in range(5)]
 blue_pawns = [Pawn("blue", i, constants.BLUE_START[i-1]) for i in range(5)]
@@ -70,7 +106,7 @@ while game_status:
 	for pawn in all_pawns:
 		pawn.draw(screen_surface)
 	my_dice.draw(screen_surface)
-
+	draw_info_panel(screen_surface, current_turn, my_dice.current_value, waiting_for_move)
 	pygame.display.update()
 	clock.tick(60)
 
