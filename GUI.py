@@ -34,6 +34,7 @@ def draw_info_panel(surface, turn, dice_val, waiting):
         "How to play:",
         "- Roll a 6 to start",
         "- Click pawn to move",
+        "- Press 'S' to skip turn",
         "",
         "Debug keys:",
         "1 or 6: Force roll"
@@ -47,7 +48,7 @@ def draw_info_panel(surface, turn, dice_val, waiting):
 # data to the other pc and then change the turn there as well. we will sent it using dictionariues and json 
 
 
-#what need to be done - make sure that pawn can be moved and add some info how to play the game - like isntruction on the left with whose turn it is
+#what need to be done - add zbijanie
 
 
 # Game assets and objects
@@ -77,6 +78,11 @@ while game_status:
 			if event.key == pygame.K_6:
 				my_dice.new_value = True	
 				my_dice.current_value   = 6
+			if event.key == pygame.K_s and waiting_for_move:
+				print(f"{current_turn} skipped their turn.")
+				current_turn = "green" if current_turn == "blue" else "blue"
+				waiting_for_move = False
+				rolled_value = 0
     
     
 		if event.type == pygame.MOUSEBUTTONDOWN and waiting_for_move:
@@ -86,14 +92,17 @@ while game_status:
 			
 			for pawn in active_pawns:
 				if pawn.rect.collidepoint(mouse_pos):
-					pawn.move(steps)
-					print(f"{current_turn} moved pawn {pawn.pawn_id}")
+					has_moved = pawn.move(steps)
 					
-					current_turn = "green" if current_turn == "blue" else "blue"
-					rolled_value = 0
-					waiting_for_move = False
-					break
-	
+					if has_moved:
+						print(f"{current_turn} moved pawn {pawn.pawn_id}")
+						
+						current_turn = "green" if current_turn == "blue" else "blue"
+						rolled_value = 0
+						waiting_for_move = False
+						break
+					else:
+						print("Invalid move! Try a different pawn or press 'S' to skip.")
 	dice_score = my_dice.update() 
 	if not my_dice.is_rolling and my_dice.current_value > 0 and my_dice.new_value: 
 		steps = my_dice.current_value

@@ -48,18 +48,22 @@ class Pawn:
                 self.is_home = True
                 
     def move(self, dice):
+        moved = False       
         if self.position == 0 and dice == 6:
             self.position = 1
             if(self.color == "blue"):
                 self.board_index = 0
                 self.update_screen_pos(0)
+                moved = True
             elif (self.color == "green"):
                 self.board_index = 26
                 self.update_screen_pos(26)
+                moved = True
         elif self.position > 0 and not self.is_home:
             self.board_index = self.board_index + dice
             self.position = self.position + dice
             self.update_screen_pos(self.board_index)
+            moved = True
         elif self.is_home:
             
             current_home_idx = self.board_index - 52
@@ -68,10 +72,12 @@ class Pawn:
                 self.board_index += dice
                 self.position += dice
                 self.update_screen_pos(self.board_index)
+                moved = True
                 if self.board_index - 52 == 5:
                     print(f"{self.color} pawn {self.pawn_id} has FINISHED!")
             else:
                 print("Roll too high to move further in home lane!")
+        return moved
 
 
 
