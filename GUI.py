@@ -48,7 +48,7 @@ def draw_info_panel(surface, turn, dice_val, waiting):
 # data to the other pc and then change the turn there as well. we will sent it using dictionariues and json 
 
 
-#what need to be done - add zbijanie
+#what need to be done - add zbijanie, add ile pionkow na polu jesli >2, adnimation better graphic ext, and winning
 
 
 # Game assets and objects
