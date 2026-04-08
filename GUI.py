@@ -48,7 +48,7 @@ def draw_info_panel(surface, turn, dice_val, waiting):
 # data to the other pc and then change the turn there as well. we will sent it using dictionariues and json 
 
 
-#what need to be done - add zbijanie, add ile pionkow na polu jesli >2, adnimation better graphic ext, and winning
+#what need to be done - check czy zbiajnie dziala na 2 pionki na sobie, add ile pionkow na polu jesli >2 (zeby pokazac ze sa 2 piuonki na sobie), adnimation better graphic ext, and winning
 
 
 # Game assets and objects
@@ -92,7 +92,7 @@ while game_status:
 			
 			for pawn in active_pawns:
 				if pawn.rect.collidepoint(mouse_pos):
-					has_moved = pawn.move(steps)
+					has_moved = pawn.move(steps, all_pawns)
 					
 					if has_moved:
 						print(f"{current_turn} moved pawn {pawn.pawn_id}")

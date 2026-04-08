@@ -31,41 +31,54 @@ class Pawn:
         surface.blit(self.image, self.rect)
         
         
+    
+    
+    def reset_to_start(self, start_pos):
+        self.position = 0
+        self.board_index = 0
+        self.is_home = False
+        self.screen_pos = start_pos
+        self.rect.center = self.screen_pos
+        
+        
         
         
     def update_screen_pos(self, board_index):
-        if self.position < 53:
+        if self.position < 52:
             self.screen_pos = constants.BOARD[board_index]
             self.rect.center = self.screen_pos
         else:
+            home_step = self.position - 52
             if self.color == "blue":
-                self.screen_pos = constants.BLUE_HOME[board_index-52] 
-                self.rect.center = self.screen_pos
-                self.is_home = True
+                self.screen_pos = constants.BLUE_HOME[home_step]
             elif self.color == "green":
-                self.screen_pos = constants.GREEN_HOME[board_index-52]
-                self.rect.center = self.screen_pos
-                self.is_home = True
+                self.screen_pos = constants.GREEN_HOME[home_step]
+            
+            self.rect.center = self.screen_pos
+            self.is_home = True
                 
-    def move(self, dice):
+    def move(self, dice, other_pawns):
         moved = False       
         if self.position == 0 and dice == 6:
             self.position = 1
-            if(self.color == "blue"):
-                self.board_index = 0
-                self.update_screen_pos(0)
-                moved = True
-            elif (self.color == "green"):
-                self.board_index = 26
-                self.update_screen_pos(26)
-                moved = True
+            self.board_index = 0 if self.color == "blue" else 26
+            self.update_screen_pos(self.board_index)
+            moved = True
+        elif self.position > 0 and not self.is_home:
+            if self.position + dice > 51:
+                self.position += dice
+                self.board_index = 52 + (self.position - 52) 
+            else:
+                self.position += dice
+                self.board_index = (self.board_index + dice) % 52 
+            self.update_screen_pos(self.board_index)
+            moved = True
         elif self.position > 0 and not self.is_home:
             self.board_index = self.board_index + dice
             self.position = self.position + dice
             self.update_screen_pos(self.board_index)
             moved = True
         elif self.is_home:
-            
             current_home_idx = self.board_index - 52
             
             if current_home_idx + dice < 6:
@@ -77,7 +90,17 @@ class Pawn:
                     print(f"{self.color} pawn {self.pawn_id} has FINISHED!")
             else:
                 print("Roll too high to move further in home lane!")
+        if moved and not self.is_home:
+            self.check_capture(other_pawns)
         return moved
+    
+    def check_capture(self, other_pawns):
+        for other in other_pawns:
+            if other.color != self.color and other.position > 0 and not other.is_home:
+                if other.board_index == self.board_index:
+                    print(f"ZBICIE! {self.color} zbija {other.color}")
+                    start_list = constants.BLUE_START if other.color == "blue" else constants.GREEN_START
+                    other.reset_to_start(start_list[other.pawn_id - 1])
 
 
 
