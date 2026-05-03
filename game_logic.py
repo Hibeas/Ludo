@@ -31,6 +31,7 @@ class Pawn:
         surface.blit(self.image, self.rect)
         
         
+<<<<<<< HEAD
         
         
     def update_screen_pos(self, board_index):
@@ -56,22 +57,89 @@ class Pawn:
             elif (self.color == "green"):
                 self.board_index = 26
                 self.update_screen_pos(26)
+=======
+    
+    
+    def reset_to_start(self, start_pos):
+        self.position = 0
+        self.board_index = 0
+        self.is_home = False
+        self.screen_pos = start_pos
+        self.rect.center = self.screen_pos
+        
+        
+        
+        
+    def update_screen_pos(self, board_index):
+        if self.position < 52:
+            self.screen_pos = constants.BOARD[board_index]
+            self.rect.center = self.screen_pos
+        else:
+            home_step = self.position - 52
+            if self.color == "blue":
+                self.screen_pos = constants.BLUE_HOME[home_step]
+            elif self.color == "green":
+                self.screen_pos = constants.GREEN_HOME[home_step]
+            
+            self.rect.center = self.screen_pos
+            self.is_home = True
+                
+    def move(self, dice, other_pawns):
+        moved = False       
+        if self.position == 0 and dice == 6:
+            self.position = 1
+            self.board_index = 0 if self.color == "blue" else 26
+            self.update_screen_pos(self.board_index)
+            moved = True
+        elif self.position > 0 and not self.is_home:
+            if self.position + dice > 51:
+                self.position += dice
+                self.board_index = 52 + (self.position - 52) 
+            else:
+                self.position += dice
+                self.board_index = (self.board_index + dice) % 52 
+            self.update_screen_pos(self.board_index)
+            moved = True
+>>>>>>> Ludo_Logic
         elif self.position > 0 and not self.is_home:
             self.board_index = self.board_index + dice
             self.position = self.position + dice
             self.update_screen_pos(self.board_index)
+<<<<<<< HEAD
         elif self.is_home:
             
+=======
+            moved = True
+        elif self.is_home:
+>>>>>>> Ludo_Logic
             current_home_idx = self.board_index - 52
             
             if current_home_idx + dice < 6:
                 self.board_index += dice
                 self.position += dice
                 self.update_screen_pos(self.board_index)
+<<<<<<< HEAD
+=======
+                moved = True
+>>>>>>> Ludo_Logic
                 if self.board_index - 52 == 5:
                     print(f"{self.color} pawn {self.pawn_id} has FINISHED!")
             else:
                 print("Roll too high to move further in home lane!")
+<<<<<<< HEAD
+=======
+        if moved and not self.is_home:
+            self.check_capture(other_pawns)
+        return moved
+    
+    def check_capture(self, other_pawns):
+        for other in other_pawns:
+            if other.color != self.color and other.position > 0 and not other.is_home:
+                if other.board_index == self.board_index:
+                    print(f"ZBICIE! {self.color} zbija {other.color}")
+                    start_list = constants.BLUE_START if other.color == "blue" else constants.GREEN_START
+                    other.reset_to_start(start_list[other.pawn_id - 1])
+>>>>>>> Ludo_Logic
 
 
 
