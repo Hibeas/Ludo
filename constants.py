@@ -1,12 +1,7 @@
-<<<<<<< HEAD
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 800
-=======
 SCREEN_WIDTH = 1100
 SCREEN_HEIGHT = 800
 GAME_WIDTH = 800
 SIDEBAR_WIDTH = 300
->>>>>>> Ludo_Logic
 
 BLUE_START = [(165, 700), (222, 640), (100, 640), (165, 575)]
 
@@ -16,13 +11,6 @@ BLUE_HOME = [(399, 713), (399, 663), (399, 613), (399, 563), (399, 513), (399, 4
 
 GREEN_HOME = [(399, 86), (399, 136), (399, 186), (399, 236), (399, 286), (399, 337)]
 
-<<<<<<< HEAD
-
-
-
-
-=======
->>>>>>> Ludo_Logic
 BOARD = [
 	#start with blue start 0, Red start at 13, green start at 26, yellow start at 39
 	(342, 713), (342, 663), (342, 613), (342, 563), (342, 513),
