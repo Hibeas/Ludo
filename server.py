@@ -36,7 +36,7 @@ class LudoServer:
 
     def getState(self):
         all_pawns_data=[]
-        for  color in self.pawns:
+        for color in self.pawns:
             for p in self.pawns[color]:
                 all_pawns_data.append(p.to_dict())
 
@@ -72,6 +72,7 @@ class LudoServer:
                         if pawn_moving.move(steps,all_pawns):
                             self.game_manager.next_turn()
                             self.last_roll = 0
+                            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
                             self.sendMessage(self.getState())
                 elif mess["action"]=="ROLL":
                     with self.lock:

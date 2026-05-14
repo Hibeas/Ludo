@@ -67,6 +67,10 @@ class Pawn:
             
             self.rect.center = self.screen_pos
             self.is_home = True
+        if self.image:
+            self.rect.center=self.screen_pos
+        else:
+            self.rect.center=self.screen_pos
                 
     def move(self, dice, other_pawns):
         moved = False       
