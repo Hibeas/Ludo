@@ -5,6 +5,7 @@ from game_logic import Pawn
 from round import GameManager
 import constants
 import sys
+import random
 
 HOST='0.0.0.0'
 PORT=6767
@@ -35,7 +36,7 @@ class LudoServer:
 
     def getState(self):
         all_pawns_data=[]
-        for  color in self.pawns:
+        for color in self.pawns:
             for p in self.pawns[color]:
                 all_pawns_data.append(p.to_dict())
 
@@ -56,7 +57,47 @@ class LudoServer:
                 data=conn.recv(1024).decode('utf-8')
                 if not data:
                     break
-            except:
+                mess=json.loads(data)
+                if mess["action"]=="MOVE":
+                    with self.lock:
+                        if player_color != self.game_manager.get_current_player():
+                            print(F"DON'T CHEAT {player_color}!")
+                            continue
+                        p_id=mess["pawn_id"]
+                        steps=getattr(self,'last_roll',0)
+
+                        pawn_moving=next(p for p in self.pawns[player_color] if p.pawn_id==p_id)
+
+                        all_pawns=self.pawns['blue']+self.pawns['green']
+                        if pawn_moving.move(steps,all_pawns):
+                            self.game_manager.next_turn()
+                            self.last_roll = 0
+                            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                            self.sendMessage(self.getState())
+                elif mess["action"]=="ROLL":
+                    with self.lock:
+                        if player_color==self.game_manager.get_current_player():
+                            forced_value=mess.get("forced_val")
+                            if forced_value:
+                                dice_val=forced_value
+                            else:
+                                dice_val=random.randint(1,6)
+                            self.last_roll=dice_val
+                            self.sendMessage({
+                                "type": "DICE_RESULT",
+                                "value": dice_val,
+                                "player": player_color,
+                                "is_forced":forced_value is not None
+                            })
+                elif mess["action"]=="SKIP":
+                    with self.lock:
+                        if player_color==self.game_manager.get_current_player():
+                            self.game_manager.next_turn()
+                            self.sendMessage(self.getState())
+            except json.JSONDecodeError:
+                print("WRONG DATA FORMAT IN JSON!")
+            except Exception as e:
+                print(e)
                 connected=False
 
         conn.close()
@@ -85,6 +126,7 @@ class LudoServer:
             while len(self.clients)<MAX_PLAYERS:
                 conn,addr=self.server.accept()
                 color=player_colors[len(self.clients)]
+                conn.sendall(json.dumps({"type": "ASSIGNED_COLOR", "color": color}).encode('utf-8'))
                 thread=threading.Thread(target=self.handleClient, args=(conn, addr, color))
                 thread.start()
         except:
