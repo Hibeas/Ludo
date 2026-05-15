@@ -5,6 +5,23 @@ import threading
 import socket
 import json
 
+def refresh_pawn_stacks(pawns_list):
+    pos_map = {}
+    for p in pawns_list:
+        if p.position > 0 and not p.is_home:
+            idx = p.board_index
+            if idx not in pos_map: pos_map[idx] = []
+            pos_map[idx].append(p)
+        else:
+            p.update_image(1) # Reset those in yard or home
+
+    for idx, stacked in pos_map.items():
+        count = len(stacked)
+        for p in stacked:
+            p.update_image(count)
+            
+
+
 HOST='127.0.0.1'
 PORT=6767
 
@@ -86,6 +103,9 @@ def listenToServer(client_socket):
 							local.position=pawn_data["new_pos"]
 							local.board_index=pawn_data["board_index"]
 							local.update_screen_pos(local.board_index)
+				refresh_pawn_stacks(blue_pawns)
+				refresh_pawn_stacks(green_pawns)
+
 				current_turn=mess["current_turn"]
 				waiting_for_move=False
 				steps=0

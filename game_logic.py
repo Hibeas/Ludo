@@ -17,13 +17,26 @@ class Pawn:
         self.screen_pos = start_pos_xy
 
         if load_image:
-            self.image = pygame.image.load(f"assets/pawn_{color}.png").convert_alpha()
+            self.images = {
+                1: pygame.image.load(f"assets/pawn_{color}.png").convert_alpha(),
+                2: pygame.image.load(f"assets/pawn_{color}_2.png").convert_alpha(),
+                3: pygame.image.load(f"assets/pawn_{color}_3.png").convert_alpha(),
+                4: pygame.image.load(f"assets/pawn_{color}_4.png").convert_alpha()
+            }
+            self.image = self.images[1]
             self.rect = self.image.get_rect(center=self.screen_pos)
         else:
+            self.images = {}
             self.image =None
             self.rect = pygame.Rect(0, 0, 30, 30)
             self.rect.center = self.screen_pos
 
+    def update_image(self, count):
+        if self.image is not None:
+            self.stack_count = count
+            self.image = self.images.get(count, self.images[1])
+            self.rect = self.image.get_rect(center=self.screen_pos)
+            
     def to_dict(self):
         """Prepares the pawn data to be sent over JSON"""
         return {
