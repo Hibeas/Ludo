@@ -1,12 +1,15 @@
 class GameManager:
+    #initialization
     def __init__(self, players):
         self.players = players 
         self.current_player_index = 0
         self.state = "WAITING_FOR_ROLL" # States: ROLLING, MOVING, END_TURN
 
+    #getting current player (color)
     def get_current_player(self):
         return self.players[self.current_player_index]
 
+    #changing player
     def next_turn(self):
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
         self.state = "WAITING_FOR_ROLL"

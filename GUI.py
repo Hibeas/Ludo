@@ -21,7 +21,7 @@ def refresh_pawn_stacks(pawns_list):
             p.update_image(count)
             
 
-
+#TCP connection
 HOST='127.0.0.1'
 PORT=6767
 
@@ -35,8 +35,10 @@ pygame.font.init()
 main_font = pygame.font.SysFont("Arial", 24)
 title_font = pygame.font.SysFont("Arial", 32, bold=True)
 
+#individual client color
 my_color = None
 
+#drawing the game window
 def draw_info_panel(surface, turn, dice_val, waiting):
     sidebar_rect = pygame.Rect(800, 0, constants.SIDEBAR_WIDTH, 800)
     pygame.draw.rect(surface, (40, 40, 40), sidebar_rect)
@@ -74,6 +76,7 @@ def draw_info_panel(surface, turn, dice_val, waiting):
         msg=main_font.render("YOUR TURN!",True,(0,255,0))
         surface.blit(msg,(820,100))
 
+#listening to server messages
 def listenToServer(client_socket):
 	global current_turn,all_pawns,waiting_for_move, my_color, steps
 	while True:
@@ -83,19 +86,24 @@ def listenToServer(client_socket):
 				break
 			mess=json.loads(data)
 
+			#assigning color (blue/green)
 			if mess["type"]=="ASSIGNED_COLOR":
 				my_color=mess["color"]
+			#getting dice result
 			elif mess["type"]=="DICE_RESULT":
 				my_dice.final_server_value=mess["value"]
+				#for forced value-1/6 (just for presentation purposes)
 				if mess.get("is_forced"):
 					my_dice.current_value=mess["value"]
 					my_dice.is_rolling=False
 					my_dice.new_value=True
+				#normal roll
 				else:
 					my_dice.start_roll()
 				if mess["player"]==my_color:
 					waiting_for_move=True
 				steps=mess["value"]
+			#updating the board
 			elif mess["type"]=="UPDATE":
 				for pawn_data in mess["pawns"]:
 					for local in all_pawns:
@@ -130,14 +138,16 @@ rolled_value = 0
 current_turn = "blue"
 waiting_for_move = False
 
-#ALSO TCP!!!!!
+#TCP connection
 client=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((HOST, PORT))
 
 threading.Thread(target=listenToServer,args=(client,),daemon=True).start()
 
+#actual game
 while game_status:
 	events = pygame.event.get()
+	#different keys
 	for event in events:
 		if event.type == pygame.QUIT:
 			game_status = False
@@ -157,6 +167,7 @@ while game_status:
 			
 			active_pawns = blue_pawns if current_turn == "blue" else green_pawns
 			
+			#moving a pawn by clicking it
 			for pawn in active_pawns:
 				if pawn.rect.collidepoint(mouse_pos):
 					move_requet={
@@ -166,6 +177,7 @@ while game_status:
 					client.sendall(json.dumps(move_requet).encode('utf-8'))
 					break
 	dice_score = my_dice.update() 
+	#waiting for a move
 	if not my_dice.is_rolling and my_dice.current_value > 0 and my_dice.new_value: 
 		steps = my_dice.current_value
 		my_dice.new_value = False
