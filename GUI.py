@@ -78,14 +78,21 @@ def draw_info_panel(surface, turn, dice_val, waiting):
 
 #listening to server messages
 def listenToServer(client_socket):
-	global current_turn,all_pawns,waiting_for_move, my_color, steps
+	global current_turn,all_pawns,waiting_for_move, my_color, steps, game_status
 	while True:
 		try:
 			data=client_socket.recv(4096).decode('utf-8')
 			if not data:
+				print("Lost connection.")
+				game_status=False
 				break
 			mess=json.loads(data)
 
+			#handling connection break
+			if mess["type"]=="SERVER_STOPPED" or mess["type"]=="DISCONNECTED":
+				print(f"Game Over: {mess['message']}")
+				game_status=False
+				break
 			#assigning color (blue/green)
 			if mess["type"]=="ASSIGNED_COLOR":
 				my_color=mess["color"]

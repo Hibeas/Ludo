@@ -117,6 +117,11 @@ class LudoServer:
         if conn in self.clients:
             self.clients.remove(conn)
         print(f"PLAYER {addr} HAS BEEN DISCONNECTED!")
+        self.sendMessage({
+            "type": "DISCONNECTED",
+            "message": f"Player ({player_color}) has left the game. You win",
+            "color":player_color
+        })
     
     #running the server
     def run(self):

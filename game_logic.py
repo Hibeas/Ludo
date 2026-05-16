@@ -84,10 +84,7 @@ class Pawn:
             self.rect.center = self.screen_pos
             self.is_home = True
         #so the captured pawn dissappears 
-        if self.image:
-            self.rect.center=self.screen_pos
-        else:
-            self.rect.center=self.screen_pos
+        self.rect.center=self.screen_pos
 
     #moving a pawn            
     def move(self, dice, other_pawns):
