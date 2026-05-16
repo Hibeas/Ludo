@@ -10,12 +10,12 @@ Ludo is a classic turn-based game. The point of the game is to race your 4 color
 ![Gameplay](assets/ludo.png)
 
 ## Project's file structure:
-- assets folder - contains all neccessary graphics.
-- constants.py - a file containing all constants needed for graphics of the UI
-- round.py - logic of a single round-contains information about current player and allows for changing player as the round ends
-- game_logic.py - contains all the logic for Pawn and Dice classes. Allows us to control pawn and dice visualisation, dice animation and the logic behind pawn movement and capture.
-- server.py - class responsible for server initialization and running. Most of the game logic is done on the server. It connects for the client in GUI.py using TCP communication.
-- GUI.py - the heart of the client side communication. It is responsible of visualisation of UI for it's client. It sends all messages created by clicking certain keys by the client to the server using TCP connection. It also receives neccessary information from the server needed for proper visualisation.
+- **assets folder** - contains all neccessary graphics.
+- **constants.py** - a file containing all constants needed for graphics of the UI
+- **round.py** - logic of a single round-contains information about current player and allows for changing player as the round ends
+- **game_logic.py** - contains all the logic for Pawn and Dice classes. Allows us to control pawn and dice visualisation, dice animation and the logic behind pawn movement and capture.
+- **server.py** - class responsible for server initialization and running. Most of the game logic is done on the server. It connects for the client in GUI.py using TCP communication.
+- **GUI.py** - the heart of the client side communication. It is responsible of visualisation of UI for it's client. It sends all messages created by clicking certain keys by the client to the server using TCP connection. It also receives neccessary information from the server needed for proper visualisation.
 
 ## Technical Implementation & Concurrency
 The project utilizes **multithreading** to ensure a smooth user experience and reliable communication:
