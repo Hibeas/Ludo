@@ -1,8 +1,8 @@
 # LUDO GAME FOR 2 PLAYERS BASED ON TCP COMMUNICATION
 
-* Authors: 
+Authors: 
 - Szymon Skarbek (Game design and game logic)
-- Anna Radosz (server-client connection and documentation) *
+- Anna Radosz (server-client connection and documentation)
 
 ## What is ludo?
 Ludo is a classic turn-based game. The point of the game is to race your 4 colored pawns from starting base to the center of the board (home) according to the rolls of a single die.
