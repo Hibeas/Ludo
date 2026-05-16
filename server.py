@@ -64,28 +64,35 @@ class LudoServer:
                 if not data:
                     break
                 mess=json.loads(data)
-                #moving a pawn
-                if mess["action"]=="MOVE":
+                if mess["action"] == "MOVE":
                     with self.lock:
-                        #cheating-green tries to move blue or vice versa
                         if player_color != self.game_manager.get_current_player():
-                            print(F"DON'T CHEAT {player_color}!")
+                            print(f"DON'T CHEAT {player_color}!")
                             continue
-                        p_id=mess["pawn_id"]
-                        steps=getattr(self,'last_roll',0)
+                        p_id = mess["pawn_id"]
+                        steps = getattr(self, 'last_roll', 0)
 
-                        #checks which pawn is moving
-                        pawn_moving=next(p for p in self.pawns[player_color] if p.pawn_id==p_id)
-
-                        all_pawns=self.pawns['blue']+self.pawns['green']
-                        #actually moving a pawn
-                        if pawn_moving.move(steps,all_pawns):
-                            self.game_manager.next_turn()
-                            self.last_roll = 0
-                            self.sendMessage(self.getState())
+                        pawn_moving = next(p for p in self.pawns[player_color] if p.pawn_id == p_id)
+                        all_pawns = self.pawns['blue'] + self.pawns['green']
+                        
+                        if pawn_moving.move(steps, all_pawns):
+                            # --- WIN LOGIC CHECK ---
+                            if all(p.position == 57 for p in self.pawns[player_color]):
+                                self.game_manager.state = "GAME_OVER"
+                                self.sendMessage({
+                                    "type": "GAME_WON",
+                                    "winner": player_color,
+                                    "message": f"CONGRATULATIONS! Player {player_color.upper()} has won the game!"
+                                })
+                            else:
+                                self.game_manager.next_turn()
+                                self.last_roll = 0
+                                self.sendMessage(self.getState())
                 #rolling a dice
                 elif mess["action"]=="ROLL":
                     with self.lock:
+                        if self.game_manager.state == "GAME_OVER":
+                            continue
                         if player_color==self.game_manager.get_current_player():
                             #forced value-6/1 (for presentation purposes only!)
                             forced_value=mess.get("forced_val")
@@ -102,6 +109,8 @@ class LudoServer:
                             })
                 #skip-pressing s
                 elif mess["action"]=="SKIP":
+                    if self.game_manager.state == "GAME_OVER": 
+                        continue
                     with self.lock:
                         if player_color==self.game_manager.get_current_player():
                             self.game_manager.next_turn()

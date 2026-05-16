@@ -52,7 +52,15 @@ class Pawn:
     #
     def draw(self, surface):
         surface.blit(self.image, self.rect)
-    
+        
+    def get_opponent_count_at(self, index, other_pawns):
+        """Helper to count how many opponent pawns are at a specific board index."""
+        return sum(1 for other in other_pawns 
+                    if other.color != self.color 
+                    and other.position > 0 
+                    and not other.is_home 
+                    and other.board_index == index)
+        
     #reseting the pawn to starting position
     def reset_to_start(self, start_pos):
         self.position = 0
@@ -88,32 +96,54 @@ class Pawn:
 
     #moving a pawn            
     def move(self, dice, other_pawns):
-        moved = False   
-        #getting the pawn out of starting home    
+        moved = False     
         if self.position == 0 and dice == 6:
+            target_index = 0 if self.color == "blue" else 26
+
+            if self.get_opponent_count_at(target_index, other_pawns) >= 2:
+                print(f"Cannot move out! Opponent block at index {target_index}!")
+                return False
+                
             self.position = 1
-            self.board_index = 0 if self.color == "blue" else 26
+            self.board_index = target_index
             self.update_screen_pos(self.board_index)
             moved = True
-        #moving on board
+            
+        #move main board
         elif self.position > 0 and not self.is_home:
+            current_pos = self.position
+            current_idx = self.board_index
+            path_blocked = False
+
+            for step in range(1, dice + 1):
+                check_pos = current_pos + step
+                
+                if check_pos > 51:
+                    break 
+                else:
+                    check_idx = (current_idx + step) % 52
+                
+                if self.get_opponent_count_at(check_idx, other_pawns) >= 2:
+                    path_blocked = True
+                    break
+            
+            if path_blocked:
+                print("Move invalid! Path or landing tile is blocked by an opponent stack!")
+                return False
+                
             if self.position + dice > 51:
                 self.position += dice
                 self.board_index = 52 + (self.position - 52) 
             else:
                 self.position += dice
                 self.board_index = (self.board_index + dice) % 52 
+                
             self.update_screen_pos(self.board_index)
             moved = True
-        elif self.position > 0 and not self.is_home:
-            self.board_index = self.board_index + dice
-            self.position = self.position + dice
-            self.update_screen_pos(self.board_index)
-            moved = True
-        #moving in home
+            
+        # In home
         elif self.is_home:
             current_home_idx = self.board_index - 52
-            #you can move
             if current_home_idx + dice < 6:
                 self.board_index += dice
                 self.position += dice
@@ -121,9 +151,9 @@ class Pawn:
                 moved = True
                 if self.board_index - 52 == 5:
                     print(f"{self.color} pawn {self.pawn_id} has FINISHED!")
-            #you rolled too high
             else:
                 print("Roll too high to move further in home lane!")
+                
         if moved and not self.is_home:
             self.check_capture(other_pawns)
         return moved

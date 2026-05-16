@@ -8,7 +8,7 @@ import json
 def refresh_pawn_stacks(pawns_list):
     pos_map = {}
     for p in pawns_list:
-        if p.position > 0 and not p.is_home:
+        if p.position > 0:
             idx = p.board_index
             if idx not in pos_map: pos_map[idx] = []
             pos_map[idx].append(p)
@@ -37,6 +37,7 @@ title_font = pygame.font.SysFont("Arial", 32, bold=True)
 
 #individual client color
 my_color = None
+winner_color = None
 
 #drawing the game window
 def draw_info_panel(surface, turn, dice_val, waiting):
@@ -45,6 +46,20 @@ def draw_info_panel(surface, turn, dice_val, waiting):
     pygame.draw.line(surface, (200, 200, 200), (800, 0), (800, 800), 3) 
 
     color_map = {"blue": (100, 100, 255), "green": (100, 255, 100)}
+    if winner_color:
+        victory_box = pygame.Rect(810, 20, 280, 200)
+        pygame.draw.rect(surface, (50, 20, 20) if winner_color == "blue" else (20, 50, 20), victory_box)
+        pygame.draw.rect(surface, (255, 215, 0), victory_box, 3)
+        
+        win_title = title_font.render("VICTORY!", True, (255, 215, 0))
+        win_text = main_font.render(f"PLAYER {winner_color.upper()}", True, (255, 255, 255))
+        win_desc = main_font.render("HAS WON THE GAME!", True, (255, 255, 255))
+        
+        surface.blit(win_title, (830, 40))
+        surface.blit(win_text, (830, 90))
+        surface.blit(win_desc, (830, 130))
+        return
+
     if my_color:
         me_text=main_font.render(f"YOU ARE: {my_color.upper()}",True,color_map[my_color])
         surface.blit(me_text, (820, 10))
@@ -93,6 +108,11 @@ def listenToServer(client_socket):
 				print(f"Game Over: {mess['message']}")
 				game_status=False
 				break
+			elif mess["type"] == "GAME_WON":
+				print(mess["message"])
+				global winner_color
+				winner_color = mess["winner"]
+				waiting_for_move = False
 			#assigning color (blue/green)
 			if mess["type"]=="ASSIGNED_COLOR":
 				my_color=mess["color"]
@@ -158,31 +178,32 @@ while game_status:
 	for event in events:
 		if event.type == pygame.QUIT:
 			game_status = False
-		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_SPACE and current_turn==my_color and not waiting_for_move:
-				client.sendall(json.dumps({"action": "ROLL"}).encode('utf-8'))
-			if event.key == pygame.K_1 and current_turn==my_color and not waiting_for_move:
-				client.sendall(json.dumps({"action": "ROLL", "forced_val": 1}).encode('utf-8'))
-			if event.key == pygame.K_6 and current_turn==my_color and not waiting_for_move:
-				client.sendall(json.dumps({"action": "ROLL", "forced_val": 6}).encode('utf-8'))
-			if event.key == pygame.K_s and current_turn==my_color and waiting_for_move:
-				client.sendall(json.dumps({"action": "SKIP"}).encode('utf-8'))
-    
-    
-		if event.type == pygame.MOUSEBUTTONDOWN and waiting_for_move:
-			mouse_pos = event.pos
-			
-			active_pawns = blue_pawns if current_turn == "blue" else green_pawns
-			
-			#moving a pawn by clicking it
-			for pawn in active_pawns:
-				if pawn.rect.collidepoint(mouse_pos):
-					move_requet={
-						"action": "MOVE",
-						"pawn_id": pawn.pawn_id
-					}
-					client.sendall(json.dumps(move_requet).encode('utf-8'))
-					break
+		if not winner_color:
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_SPACE and current_turn==my_color and not waiting_for_move:
+					client.sendall(json.dumps({"action": "ROLL"}).encode('utf-8'))
+				if event.key == pygame.K_1 and current_turn==my_color and not waiting_for_move:
+					client.sendall(json.dumps({"action": "ROLL", "forced_val": 1}).encode('utf-8'))
+				if event.key == pygame.K_6 and current_turn==my_color and not waiting_for_move:
+					client.sendall(json.dumps({"action": "ROLL", "forced_val": 6}).encode('utf-8'))
+				if event.key == pygame.K_s and current_turn==my_color and waiting_for_move:
+					client.sendall(json.dumps({"action": "SKIP"}).encode('utf-8'))
+		
+		
+			if event.type == pygame.MOUSEBUTTONDOWN and waiting_for_move:
+				mouse_pos = event.pos
+				
+				active_pawns = blue_pawns if current_turn == "blue" else green_pawns
+				
+				#moving a pawn by clicking it
+				for pawn in active_pawns:
+					if pawn.rect.collidepoint(mouse_pos):
+						move_requet={
+							"action": "MOVE",
+							"pawn_id": pawn.pawn_id
+						}
+						client.sendall(json.dumps(move_requet).encode('utf-8'))
+						break
 	dice_score = my_dice.update() 
 	#waiting for a move
 	if not my_dice.is_rolling and my_dice.current_value > 0 and my_dice.new_value: 
