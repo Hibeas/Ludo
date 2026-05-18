@@ -1,25 +1,24 @@
 import pygame
-from pyparsing import line
 from game_logic import Pawn, Dice
 import constants
 import threading
 import socket
 import json
 
-def refresh_pawn_stacks(pawns_list):
-    pos_map = {}
-    for p in pawns_list:
-        if p.position > 0:
-            idx = p.board_index
-            if idx not in pos_map: pos_map[idx] = []
-            pos_map[idx].append(p)
-        else:
-            p.update_image(1) # Reset those in yard or home
+def refreshPawnStacks(pawns_list):
+	pos_map = {}
+	for p in pawns_list:
+		if p.position > 0:
+			idx = p.board_index
+			if idx not in pos_map: pos_map[idx] = []
+			pos_map[idx].append(p)
+		else:
+			p.updateImage(1) # Reset those in yard or home
 
-    for idx, stacked in pos_map.items():
-        count = len(stacked)
-        for p in stacked:
-            p.update_image(count)
+	for idx, stacked in pos_map.items():
+		count = len(stacked)
+		for p in stacked:
+			p.updateImage(count)
             
 
 #TCP connection
@@ -42,7 +41,7 @@ winner_color = None
 walkover = False
 
 #drawing the game window
-def draw_info_panel(surface, turn, dice_val, waiting):
+def drawInfoPanel(surface, turn, dice_val, waiting):
     sidebar_rect = pygame.Rect(800, 0, constants.SIDEBAR_WIDTH, 800)
     pygame.draw.rect(surface, (40, 40, 40), sidebar_rect)
     pygame.draw.line(surface, (200, 200, 200), (800, 0), (800, 800), 3) 
@@ -97,7 +96,7 @@ def draw_info_panel(surface, turn, dice_val, waiting):
         msg=main_font.render("YOUR TURN!",True,(0,255,0))
         surface.blit(msg,(820,100))
 
-#listening to server messages
+# listening to server messages
 def listenToServer(client_socket):
 	global current_turn,all_pawns,waiting_for_move, my_color, steps, game_status, winner_color, walkover
 	buffer = ""
@@ -146,9 +145,9 @@ def listenToServer(client_socket):
 						my_dice.current_value=mess["value"]
 						my_dice.is_rolling=False
 						my_dice.new_value=True
-					#normal roll
+					# normal roll
 					else:
-						my_dice.start_roll()
+						my_dice.startRoll()
 					if mess["player"]==my_color:
 						waiting_for_move=True
 					steps=mess["value"]
@@ -159,9 +158,9 @@ def listenToServer(client_socket):
 							if local.color==pawn_data["color"] and local.pawn_id==pawn_data["pawn_id"]:
 								local.position=pawn_data["new_pos"]
 								local.board_index=pawn_data["board_index"]
-								local.update_screen_pos(local.board_index)
-					refresh_pawn_stacks(blue_pawns)
-					refresh_pawn_stacks(green_pawns)
+								local.updateScreenPos(local.board_index)
+					refreshPawnStacks(blue_pawns)
+					refreshPawnStacks(green_pawns)
 
 					current_turn=mess["current_turn"]
 					waiting_for_move=False
@@ -185,9 +184,12 @@ waiting_for_move = False
 
 #TCP connection
 client=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect((HOST, PORT))
-
-threading.Thread(target=listenToServer,args=(client,),daemon=True).start()
+try:
+    client.connect((HOST, PORT))
+    threading.Thread(target=listenToServer,args=(client,),daemon=True).start()
+except Exception as e:
+    print(f"Could not connect to server at {HOST}:{PORT} - {e}")
+    game_status = False
 
 #actual game
 while game_status:
@@ -235,7 +237,7 @@ while game_status:
 	for pawn in all_pawns:
 		pawn.draw(screen_surface)
 	my_dice.draw(screen_surface)
-	draw_info_panel(screen_surface, current_turn, my_dice.current_value, waiting_for_move)
+	drawInfoPanel(screen_surface, current_turn, my_dice.current_value, waiting_for_move)
 	pygame.display.update()
 	clock.tick(60)
 

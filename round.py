@@ -6,11 +6,11 @@ class GameManager:
         self.state = "WAITING_FOR_ROLL" # States: ROLLING, MOVING, END_TURN
 
     #getting current player (color)
-    def get_current_player(self):
+    def getCurrentPlayer(self):
         return self.players[self.current_player_index]
 
-    #changing player
-    def next_turn(self):
+    # changing player
+    def nextTurn(self):
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
         self.state = "WAITING_FOR_ROLL"
-        print(f"It is now {self.get_current_player()}'s turn!")
+        print(f"It is now {self.getCurrentPlayer()}'s turn!")

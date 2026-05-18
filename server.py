@@ -26,18 +26,22 @@ class LudoServer:
         }
 
         self.clients=[]
+        self._next_player_index = 0
         self.lock=threading.Lock()
     
     #sending a message to all clients
     def sendMessage(self, message):
         json_packet = json.dumps(message) + "\n"
         data = json_packet.encode('utf-8')
-        
-        for client in list(self.clients): 
+        for client in list(self.clients):
             try:
                 client.sendall(data)
             except Exception as e:
                 print(f"Error sending message: {e}")
+                try:
+                    client.close()
+                except Exception:
+                    pass
                 if client in self.clients:
                     self.clients.remove(client)
 
@@ -46,11 +50,11 @@ class LudoServer:
         all_pawns_data=[]
         for color in self.pawns:
             for p in self.pawns[color]:
-                all_pawns_data.append(p.to_dict())
+                all_pawns_data.append(p.toDict())
 
         return {
             "type": "UPDATE",
-            "current_turn": self.game_manager.get_current_player(),
+            "current_turn": self.game_manager.getCurrentPlayer(),
             "game_state": self.game_manager.state,
             "pawns": all_pawns_data
         }
@@ -58,7 +62,8 @@ class LudoServer:
     #handling client connection
     def handleClient(self, conn, addr, player_color):
         print(f"CLIENT {player_color} HAS CONNECTED!")
-        self.clients.append(conn)
+        if conn not in self.clients:
+            self.clients.append(conn)
 
         connected=True
         server_buffer = ""
@@ -77,7 +82,7 @@ class LudoServer:
                     mess = json.loads(line)
                     if mess["action"] == "MOVE":
                         with self.lock:
-                            if player_color != self.game_manager.get_current_player():
+                            if player_color != self.game_manager.getCurrentPlayer():
                                 print(f"DON'T CHEAT {player_color}!")
                                 continue
                             p_id = mess["pawn_id"]
@@ -96,7 +101,7 @@ class LudoServer:
                                         "message": f"CONGRATULATIONS! Player {player_color.upper()} has won the game!"
                                     })
                                 else:
-                                    self.game_manager.next_turn()
+                                    self.game_manager.nextTurn()
                                     self.last_roll = 0
                                     self.sendMessage(self.getState())
                     #rolling a dice
@@ -104,7 +109,7 @@ class LudoServer:
                         with self.lock:
                             if self.game_manager.state == "GAME_OVER":
                                 continue
-                            if player_color==self.game_manager.get_current_player():
+                            if player_color==self.game_manager.getCurrentPlayer():
                                 #forced value-6/1 (for presentation purposes only!)
                                 forced_value=mess.get("forced_val")
                                 if forced_value:
@@ -123,8 +128,8 @@ class LudoServer:
                         if self.game_manager.state == "GAME_OVER": 
                             continue
                         with self.lock:
-                            if player_color==self.game_manager.get_current_player():
-                                self.game_manager.next_turn()
+                            if player_color==self.game_manager.getCurrentPlayer():
+                                self.game_manager.nextTurn()
                                 self.sendMessage(self.getState())
             except json.JSONDecodeError:
                 print("WRONG DATA FORMAT IN JSON!")
@@ -155,8 +160,11 @@ class LudoServer:
             if cmd.lower()=='exit':
                 print("SHUTTING SERVER DOWN!")
                 self.sendMessage({"type": "SERVER_STOPPED", "message": "Server is closing."})
-                for client in self.clients:
-                    client.close()
+                for client in list(self.clients):
+                    try:
+                        client.close()
+                    except Exception:
+                        pass
                 self.server.close()
                 sys.exit()
 
@@ -167,12 +175,24 @@ class LudoServer:
             #only while we have less than 2 players
             while len(self.clients)<MAX_PLAYERS:
                 conn,addr=self.server.accept()
-                color=player_colors[len(self.clients)]
-                conn.sendall((json.dumps({"type": "ASSIGNED_COLOR", "color": color}) + "\n").encode('utf-8'))
-                thread=threading.Thread(target=self.handleClient, args=(conn, addr, color))
+                # assign color deterministically using counter to avoid race
+                color = player_colors[self._next_player_index % len(player_colors)]
+                self._next_player_index += 1
+                try:
+                    conn.sendall((json.dumps({"type": "ASSIGNED_COLOR", "color": color}) + "\n").encode('utf-8'))
+                except Exception as e:
+                    print(f"Failed sending ASSIGNED_COLOR to {addr}: {e}")
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    continue
+                # append client before launching handler thread to keep state consistent
+                self.clients.append(conn)
+                thread=threading.Thread(target=self.handleClient, args=(conn, addr, color), daemon=True)
                 thread.start()
-        except:
-            pass
+        except Exception as e:
+            print(f"acceptConnection error: {e}")
 
 #very simple main
 if __name__=="__main__":
