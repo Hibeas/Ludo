@@ -1,4 +1,5 @@
 import pygame
+from pyparsing import line
 from game_logic import Pawn, Dice
 import constants
 import threading
@@ -38,6 +39,7 @@ title_font = pygame.font.SysFont("Arial", 32, bold=True)
 #individual client color
 my_color = None
 winner_color = None
+walkover = False
 
 #drawing the game window
 def draw_info_panel(surface, turn, dice_val, waiting):
@@ -54,10 +56,14 @@ def draw_info_panel(surface, turn, dice_val, waiting):
         win_title = title_font.render("VICTORY!", True, (255, 215, 0))
         win_text = main_font.render(f"PLAYER {winner_color.upper()}", True, (255, 255, 255))
         win_desc = main_font.render("HAS WON THE GAME!", True, (255, 255, 255))
+        if walkover:
+            win_walkover = main_font.render("Through Walkover!", True, (255, 100, 100))
         
         surface.blit(win_title, (830, 40))
         surface.blit(win_text, (830, 90))
         surface.blit(win_desc, (830, 130))
+        if walkover:
+            surface.blit(win_walkover, (830, 170))
         return
 
     if my_color:
@@ -93,64 +99,76 @@ def draw_info_panel(surface, turn, dice_val, waiting):
 
 #listening to server messages
 def listenToServer(client_socket):
-	global current_turn,all_pawns,waiting_for_move, my_color, steps, game_status
+	global current_turn,all_pawns,waiting_for_move, my_color, steps, game_status, winner_color, walkover
+	buffer = ""
+
 	while True:
 		try:
-			data=client_socket.recv(4096).decode('utf-8')
+			data=client_socket.recv(4096)
 			if not data:
 				print("Lost connection.")
 				game_status=False
 				break
-			mess=json.loads(data)
+			buffer += data.decode('utf-8')
+			while "\n" in buffer:
+				line, buffer = buffer.split("\n", 1)
+                
+				if not line.strip(): 
+					continue
+				mess = json.loads(line)
+				#handling connection break
+				if mess["type"] == "SERVER_STOPPED":
+					print(f"Game Over: {mess['message']}")
+					game_status = False
+					break
+				
+				elif mess["type"] == "DISCONNECTED":
+					print(f"Opponent disconnected: {mess['message']}")
+					global waiting_for_move
+					if mess.get("color") == "blue":
+						winner_color = "green"
+					else:
+						winner_color = "blue"
+					walkover = True
+					waiting_for_move = False 
+				elif mess["type"] == "GAME_WON":
+					print(mess["message"])
+					winner_color = mess["winner"]
+					waiting_for_move = False
+				#assigning color (blue/green)
+				if mess["type"]=="ASSIGNED_COLOR":
+					my_color=mess["color"]
+				#getting dice result
+				elif mess["type"]=="DICE_RESULT":
+					my_dice.final_server_value=mess["value"]
+					#for forced value-1/6 (just for presentation purposes)
+					if mess.get("is_forced"):
+						my_dice.current_value=mess["value"]
+						my_dice.is_rolling=False
+						my_dice.new_value=True
+					#normal roll
+					else:
+						my_dice.start_roll()
+					if mess["player"]==my_color:
+						waiting_for_move=True
+					steps=mess["value"]
+				#updating the board
+				elif mess["type"]=="UPDATE":
+					for pawn_data in mess["pawns"]:
+						for local in all_pawns:
+							if local.color==pawn_data["color"] and local.pawn_id==pawn_data["pawn_id"]:
+								local.position=pawn_data["new_pos"]
+								local.board_index=pawn_data["board_index"]
+								local.update_screen_pos(local.board_index)
+					refresh_pawn_stacks(blue_pawns)
+					refresh_pawn_stacks(green_pawns)
 
-			#handling connection break
-			if mess["type"]=="SERVER_STOPPED" or mess["type"]=="DISCONNECTED":
-				print(f"Game Over: {mess['message']}")
-				game_status=False
-				break
-			elif mess["type"] == "GAME_WON":
-				print(mess["message"])
-				global winner_color
-				winner_color = mess["winner"]
-				waiting_for_move = False
-			#assigning color (blue/green)
-			if mess["type"]=="ASSIGNED_COLOR":
-				my_color=mess["color"]
-			#getting dice result
-			elif mess["type"]=="DICE_RESULT":
-				my_dice.final_server_value=mess["value"]
-				#for forced value-1/6 (just for presentation purposes)
-				if mess.get("is_forced"):
-					my_dice.current_value=mess["value"]
-					my_dice.is_rolling=False
-					my_dice.new_value=True
-				#normal roll
-				else:
-					my_dice.start_roll()
-				if mess["player"]==my_color:
-					waiting_for_move=True
-				steps=mess["value"]
-			#updating the board
-			elif mess["type"]=="UPDATE":
-				for pawn_data in mess["pawns"]:
-					for local in all_pawns:
-						if local.color==pawn_data["color"] and local.pawn_id==pawn_data["pawn_id"]:
-							local.position=pawn_data["new_pos"]
-							local.board_index=pawn_data["board_index"]
-							local.update_screen_pos(local.board_index)
-				refresh_pawn_stacks(blue_pawns)
-				refresh_pawn_stacks(green_pawns)
-
-				current_turn=mess["current_turn"]
-				waiting_for_move=False
-				steps=0
-		except:
+					current_turn=mess["current_turn"]
+					waiting_for_move=False
+					steps=0
+		except Exception as e:
+			print(f"Network error in client loop: {e}")
 			break
-#okay we need to now whos turn it is if its on one pc it will jsut change the turn after the player rolls the dice and moves but if its on two pcs we need to send the 
-# data to the other pc and then change the turn there as well. we will sent it using dictionariues and json 
-
-
-#what need to be done - check czy zbiajnie dziala na 2 pionki na sobie, add ile pionkow na polu jesli >2 (zeby pokazac ze sa 2 piuonki na sobie), adnimation better graphic ext, and winning
 
 
 # Game assets and objects
@@ -181,13 +199,13 @@ while game_status:
 		if not winner_color:
 			if event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_SPACE and current_turn==my_color and not waiting_for_move:
-					client.sendall(json.dumps({"action": "ROLL"}).encode('utf-8'))
+					client.sendall((json.dumps({"action": "ROLL"}) + "\n").encode('utf-8'))
 				if event.key == pygame.K_1 and current_turn==my_color and not waiting_for_move:
-					client.sendall(json.dumps({"action": "ROLL", "forced_val": 1}).encode('utf-8'))
+					client.sendall((json.dumps({"action": "ROLL", "forced_val": 1}) + "\n").encode('utf-8'))
 				if event.key == pygame.K_6 and current_turn==my_color and not waiting_for_move:
-					client.sendall(json.dumps({"action": "ROLL", "forced_val": 6}).encode('utf-8'))
+					client.sendall((json.dumps({"action": "ROLL", "forced_val": 6}) + "\n").encode('utf-8'))
 				if event.key == pygame.K_s and current_turn==my_color and waiting_for_move:
-					client.sendall(json.dumps({"action": "SKIP"}).encode('utf-8'))
+					client.sendall((json.dumps({"action": "SKIP"}) + "\n").encode('utf-8'))
 		
 		
 			if event.type == pygame.MOUSEBUTTONDOWN and waiting_for_move:
@@ -198,11 +216,11 @@ while game_status:
 				#moving a pawn by clicking it
 				for pawn in active_pawns:
 					if pawn.rect.collidepoint(mouse_pos):
-						move_requet={
+						move_request={
 							"action": "MOVE",
 							"pawn_id": pawn.pawn_id
 						}
-						client.sendall(json.dumps(move_requet).encode('utf-8'))
+						client.sendall((json.dumps(move_request) + "\n").encode('utf-8'))
 						break
 	dice_score = my_dice.update() 
 	#waiting for a move

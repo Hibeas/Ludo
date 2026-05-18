@@ -29,13 +29,17 @@ class LudoServer:
         self.lock=threading.Lock()
     
     #sending a message to all clients
-    def sendMessage(self,message):
-        data=json.dumps(message).encode('utf-8')
-        for client in self.clients:
+    def sendMessage(self, message):
+        json_packet = json.dumps(message) + "\n"
+        data = json_packet.encode('utf-8')
+        
+        for client in list(self.clients): 
             try:
                 client.sendall(data)
-            except:
-                self.clients.remove(client)
+            except Exception as e:
+                print(f"Error sending message: {e}")
+                if client in self.clients:
+                    self.clients.remove(client)
 
     #getting state of all pawns (updating the board)
     def getState(self):
@@ -57,64 +61,71 @@ class LudoServer:
         self.clients.append(conn)
 
         connected=True
+        server_buffer = ""
         #during the game
         while connected:
             try:
                 data=conn.recv(1024).decode('utf-8')
                 if not data:
                     break
-                mess=json.loads(data)
-                if mess["action"] == "MOVE":
-                    with self.lock:
-                        if player_color != self.game_manager.get_current_player():
-                            print(f"DON'T CHEAT {player_color}!")
-                            continue
-                        p_id = mess["pawn_id"]
-                        steps = getattr(self, 'last_roll', 0)
-
-                        pawn_moving = next(p for p in self.pawns[player_color] if p.pawn_id == p_id)
-                        all_pawns = self.pawns['blue'] + self.pawns['green']
-                        
-                        if pawn_moving.move(steps, all_pawns):
-                            # --- WIN LOGIC CHECK ---
-                            if all(p.position == 57 for p in self.pawns[player_color]):
-                                self.game_manager.state = "GAME_OVER"
-                                self.sendMessage({
-                                    "type": "GAME_WON",
-                                    "winner": player_color,
-                                    "message": f"CONGRATULATIONS! Player {player_color.upper()} has won the game!"
-                                })
-                            else:
-                                self.game_manager.next_turn()
-                                self.last_roll = 0
-                                self.sendMessage(self.getState())
-                #rolling a dice
-                elif mess["action"]=="ROLL":
-                    with self.lock:
-                        if self.game_manager.state == "GAME_OVER":
-                            continue
-                        if player_color==self.game_manager.get_current_player():
-                            #forced value-6/1 (for presentation purposes only!)
-                            forced_value=mess.get("forced_val")
-                            if forced_value:
-                                dice_val=forced_value
-                            else:
-                                dice_val=random.randint(1,6) #this is not a forced value
-                            self.last_roll=dice_val
-                            self.sendMessage({
-                                "type": "DICE_RESULT",
-                                "value": dice_val,
-                                "player": player_color,
-                                "is_forced":forced_value is not None
-                            })
-                #skip-pressing s
-                elif mess["action"]=="SKIP":
-                    if self.game_manager.state == "GAME_OVER": 
+                server_buffer += data
+                while "\n" in server_buffer:
+                    line, server_buffer = server_buffer.split("\n", 1)
+                    if not line.strip():
                         continue
-                    with self.lock:
-                        if player_color==self.game_manager.get_current_player():
-                            self.game_manager.next_turn()
-                            self.sendMessage(self.getState())
+                        
+                    mess = json.loads(line)
+                    if mess["action"] == "MOVE":
+                        with self.lock:
+                            if player_color != self.game_manager.get_current_player():
+                                print(f"DON'T CHEAT {player_color}!")
+                                continue
+                            p_id = mess["pawn_id"]
+                            steps = getattr(self, 'last_roll', 0)
+
+                            pawn_moving = next(p for p in self.pawns[player_color] if p.pawn_id == p_id)
+                            all_pawns = self.pawns['blue'] + self.pawns['green']
+                            
+                            if pawn_moving.move(steps, all_pawns):
+                                # --- WIN LOGIC CHECK ---
+                                if all(p.position == 57 for p in self.pawns[player_color]):
+                                    self.game_manager.state = "GAME_OVER"
+                                    self.sendMessage({
+                                        "type": "GAME_WON",
+                                        "winner": player_color,
+                                        "message": f"CONGRATULATIONS! Player {player_color.upper()} has won the game!"
+                                    })
+                                else:
+                                    self.game_manager.next_turn()
+                                    self.last_roll = 0
+                                    self.sendMessage(self.getState())
+                    #rolling a dice
+                    elif mess["action"]=="ROLL":
+                        with self.lock:
+                            if self.game_manager.state == "GAME_OVER":
+                                continue
+                            if player_color==self.game_manager.get_current_player():
+                                #forced value-6/1 (for presentation purposes only!)
+                                forced_value=mess.get("forced_val")
+                                if forced_value:
+                                    dice_val=forced_value
+                                else:
+                                    dice_val=random.randint(1,6) #this is not a forced value
+                                self.last_roll=dice_val
+                                self.sendMessage({
+                                    "type": "DICE_RESULT",
+                                    "value": dice_val,
+                                    "player": player_color,
+                                    "is_forced":forced_value is not None
+                                })
+                    #skip-pressing s
+                    elif mess["action"]=="SKIP":
+                        if self.game_manager.state == "GAME_OVER": 
+                            continue
+                        with self.lock:
+                            if player_color==self.game_manager.get_current_player():
+                                self.game_manager.next_turn()
+                                self.sendMessage(self.getState())
             except json.JSONDecodeError:
                 print("WRONG DATA FORMAT IN JSON!")
             except Exception as e:
@@ -157,7 +168,7 @@ class LudoServer:
             while len(self.clients)<MAX_PLAYERS:
                 conn,addr=self.server.accept()
                 color=player_colors[len(self.clients)]
-                conn.sendall(json.dumps({"type": "ASSIGNED_COLOR", "color": color}).encode('utf-8'))
+                conn.sendall((json.dumps({"type": "ASSIGNED_COLOR", "color": color}) + "\n").encode('utf-8'))
                 thread=threading.Thread(target=self.handleClient, args=(conn, addr, color))
                 thread.start()
         except:
